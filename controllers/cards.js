@@ -26,12 +26,12 @@ module.exports.delCardId = async (req, res) => {
   try {
     const card = await Card.findByIdAndRemove(cardId);
     if (!card) {
-      res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
-    } else {
-      res.send(card);
+      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
     }
+    return res.send(card);
   } catch (err) {
-    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при удалении карточки: ${err}` });
+    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при удалении карточки: ${err}` });
   }
 };
 
@@ -49,6 +49,7 @@ module.exports.likeCard = async (req, res) => {
     return res.send(card);
   } catch (err) {
     if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при лайке карточки: ${err}` });
   }
 };
@@ -67,6 +68,7 @@ module.exports.dislikeCard = async (req, res) => {
     return res.send(card);
   } catch (err) {
     if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при дизлайке карточки: ${err}` });
   }
 };

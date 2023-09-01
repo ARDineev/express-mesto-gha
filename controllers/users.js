@@ -26,12 +26,12 @@ module.exports.getUserId = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый пользователь не найден' });
-    } else {
-      res.send(user);
+      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый пользователь не найден' });
     }
+    return res.send(user);
   } catch (err) {
-    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении пользователя: ${err}` });
+    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении пользователя: ${err}` });
   }
 };
 
