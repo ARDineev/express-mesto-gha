@@ -3,13 +3,11 @@ const { BAD_REQUEST_CODE, NOT_FOUND_CODE, SERVER_ERROR_CODE } = require('../util
 
 module.exports.createCard = async (req, res) => {
   const { name, link } = req.body;
-  if (!name || !link) {
-    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-  }
   try {
     const card = await Card.create({ name, link, owner: req.user });
     return res.send(card);
   } catch (err) {
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании карточки: ${err}` });
   }
 };
@@ -39,9 +37,6 @@ module.exports.delCardId = async (req, res) => {
 
 module.exports.likeCard = async (req, res) => {
   const { cardId } = req.params;
-  if (!cardId) {
-    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-  }
   try {
     const card = await Card.findByIdAndUpdate(
       cardId,
@@ -53,15 +48,13 @@ module.exports.likeCard = async (req, res) => {
     }
     return res.send(card);
   } catch (err) {
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при лайке карточки: ${err}` });
   }
 };
 
 module.exports.dislikeCard = async (req, res) => {
   const { cardId } = req.params;
-  if (!cardId) {
-    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-  }
   try {
     const card = await Card.findByIdAndUpdate(
       cardId,
@@ -73,6 +66,7 @@ module.exports.dislikeCard = async (req, res) => {
     }
     return res.send(card);
   } catch (err) {
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при дизлайке карточки: ${err}` });
   }
 };
