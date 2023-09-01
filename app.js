@@ -7,9 +7,9 @@ const cardsRouter = require('./routes/cards');
 const { PORT = 3000 } = process.env;
 
 mongoose.connect('mongodb://localhost:27017/mestodb', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  family: 4,
+  useNewUrlParser: true, // новый MongoDB-парсер
+  useUnifiedTopology: true, // новый движок MongoDB
+  family: 4, // версия IP для подключения
 });
 
 const app = express();
@@ -25,6 +25,4 @@ app.use((req, res, next) => {
 app.use('/users', usersRouter);
 app.use('/cards', cardsRouter);
 
-app.listen(PORT, () => {
-  console.log(`App listening on port ${PORT}`);
-});
+app.listen(PORT);

@@ -1,12 +1,16 @@
 const Card = require('../models/card');
+const { BAD_REQUEST_CODE, NOT_FOUND_CODE, SERVER_ERROR_CODE } = require('../utils');
 
 module.exports.createCard = async (req, res) => {
   const { name, link } = req.body;
+  if (!name || !link) {
+    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+  }
   try {
     const card = await Card.create({ name, link, owner: req.user });
-    res.send(card);
+    return res.send(card);
   } catch (err) {
-    res.status(500).send({ message: `Ошибка при создании карточки: ${err}` });
+    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании карточки: ${err}` });
   }
 };
 
@@ -15,7 +19,7 @@ module.exports.getCards = async (req, res) => {
     const cards = await Card.find({});
     res.send(cards);
   } catch (err) {
-    res.status(500).send({ message: `Ошибка при получении списка карточек: ${err}` });
+    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении списка карточек: ${err}` });
   }
 };
 
@@ -24,17 +28,20 @@ module.exports.delCardId = async (req, res) => {
   try {
     const card = await Card.findByIdAndRemove(cardId);
     if (!card) {
-      res.status(404).send({ message: 'Запрашиваемая карточка не найдена' });
+      res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
     } else {
       res.send(card);
     }
   } catch (err) {
-    res.status(500).send({ message: `Ошибка при удалении карточки: ${err}` });
+    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при удалении карточки: ${err}` });
   }
 };
 
 module.exports.likeCard = async (req, res) => {
   const { cardId } = req.params;
+  if (!cardId) {
+    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+  }
   try {
     const card = await Card.findByIdAndUpdate(
       cardId,
@@ -42,17 +49,19 @@ module.exports.likeCard = async (req, res) => {
       { new: true },
     );
     if (!card) {
-      res.status(404).send({ message: 'Запрашиваемая карточка не найдена' });
-    } else {
-      res.send(card);
+      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
     }
+    return res.send(card);
   } catch (err) {
-    res.status(500).send({ message: `Ошибка при лайке карточки: ${err}` });
+    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при лайке карточки: ${err}` });
   }
 };
 
 module.exports.dislikeCard = async (req, res) => {
   const { cardId } = req.params;
+  if (!cardId) {
+    return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+  }
   try {
     const card = await Card.findByIdAndUpdate(
       cardId,
@@ -60,11 +69,10 @@ module.exports.dislikeCard = async (req, res) => {
       { new: true },
     );
     if (!card) {
-      res.status(404).send({ message: 'Запрашиваемая карточка не найдена' });
-    } else {
-      res.send(card);
+      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
     }
+    return res.send(card);
   } catch (err) {
-    res.status(500).send({ message: `Ошибка при дизлайке карточки: ${err}` });
+    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при дизлайке карточки: ${err}` });
   }
 };
