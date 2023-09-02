@@ -1,13 +1,18 @@
 const User = require('../models/user');
-const { BAD_REQUEST_CODE, NOT_FOUND_CODE, SERVER_ERROR_CODE } = require('../utils');
+const {
+  BAD_REQUEST_CODE,
+  NOT_FOUND_CODE,
+  SERVER_ERROR_CODE,
+  CREATED_CODE,
+} = require('../utils/constants');
 
 module.exports.createUser = async (req, res) => {
   const { name, about, avatar } = req.body;
   try {
     const user = await User.create({ name, about, avatar });
-    return res.send(user);
+    return res.status(CREATED_CODE).send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании пользователя: ${err}` });
   }
 };
@@ -48,7 +53,7 @@ module.exports.updateUserProfile = async (req, res) => {
     }
     return res.send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при обновлении данных пользователя: ${err}` });
   }
 };
@@ -66,7 +71,7 @@ module.exports.updateUserAvatar = async (req, res) => {
     }
     return res.send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при обновлении данных пользователя: ${err}` });
   }
 };

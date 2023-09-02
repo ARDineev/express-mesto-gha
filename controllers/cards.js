@@ -1,13 +1,18 @@
 const Card = require('../models/card');
-const { BAD_REQUEST_CODE, NOT_FOUND_CODE, SERVER_ERROR_CODE } = require('../utils');
+const {
+  BAD_REQUEST_CODE,
+  NOT_FOUND_CODE,
+  SERVER_ERROR_CODE,
+  CREATED_CODE,
+} = require('../utils/constants');
 
 module.exports.createCard = async (req, res) => {
   const { name, link } = req.body;
   try {
     const card = await Card.create({ name, link, owner: req.user });
-    return res.send(card);
+    return res.status(CREATED_CODE).send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании карточки: ${err}` });
   }
 };
@@ -48,7 +53,7 @@ module.exports.likeCard = async (req, res) => {
     }
     return res.send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при лайке карточки: ${err}` });
   }
@@ -67,7 +72,7 @@ module.exports.dislikeCard = async (req, res) => {
     }
     return res.send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
     if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
     return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при дизлайке карточки: ${err}` });
   }
