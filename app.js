@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
+const { errors, celebrate, Joi } = require('celebrate');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
 const {
@@ -24,12 +25,26 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.post('/signin', login);
-app.post('/signup', createUser);
+app.post('/signin', celebrate({
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(8),
+  }),
+}), login);
+app.post('/signup', celebrate({
+  body: Joi.object().keys({
+    name: Joi.string().min(2).max(30),
+    about: Joi.string().min(2).max(30),
+    avatar: Joi.string().pattern(/https?:\/\/(www\.)?[\w-.]+\.([a-z]{2,6})[/\w\-._~:/?#[\]@!$&'()*+,;=]*#?\/?$/),
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(8),
+  }),
+}), createUser);
 
 app.use('/users', auth, usersRouter);
 app.use('/cards', auth, cardsRouter);
 app.use('/', (req, res) => res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый адрес не найден' }));
+app.use(errors());
 app.use((err, req, res, next) => {
   const { statusCode = SERVER_ERROR_CODE, message } = err;
   if (err.name === 'JsonWebTokenError') return res.status(UNAUTHORIZED_CODE).send({ message: err.message });

@@ -10,12 +10,17 @@ module.exports.createUser = async (req, res, next) => {
   const {
     name, about, avatar, email, password,
   } = req.body;
+  if (!email || !password) {
+    throw new EmptyFieldsError('Поля email и password являются обязательными');
+  }
   try {
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({
       name, about, avatar, email, password: hash,
     });
-    return res.status(CREATED_CODE).send(user);
+    return res.status(CREATED_CODE).send({
+      _id: user._id, name: user.name, about: user.about, avatar: user.avatar, email,
+    });
   } catch (err) {
     return next(err);
   }
