@@ -1,46 +1,45 @@
 const Card = require('../models/card');
-const {
-  BAD_REQUEST_CODE,
-  NOT_FOUND_CODE,
-  SERVER_ERROR_CODE,
-  CREATED_CODE,
-} = require('../utils/constants');
+const { CREATED_CODE } = require('../utils/constants');
+const NotFoundError = require('../errors/not-found-err');
+const ForbiddenError = require('../errors/forbidden-err');
 
-module.exports.createCard = async (req, res) => {
+module.exports.createCard = async (req, res, next) => {
   const { name, link } = req.body;
   try {
     const card = await Card.create({ name, link, owner: req.user });
     return res.status(CREATED_CODE).send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании карточки: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.getCards = async (req, res) => {
+module.exports.getCards = async (req, res, next) => {
   try {
     const cards = await Card.find({});
-    res.send(cards);
+    return res.send(cards);
   } catch (err) {
-    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении списка карточек: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.delCardId = async (req, res) => {
+module.exports.delCardId = async (req, res, next) => {
   const { cardId } = req.params;
   try {
-    const card = await Card.findByIdAndRemove(cardId);
+    const card = await Card.findOne({ _id: cardId });
     if (!card) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
+      throw new NotFoundError('Запрашиваемая карточка не найдена');
     }
+    if (String(card.owner) !== req.user._id) {
+      throw new ForbiddenError('Нет прав для выполнения действия');
+    }
+    await Card.deleteOne(card);
     return res.send(card);
   } catch (err) {
-    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при удалении карточки: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.likeCard = async (req, res) => {
+module.exports.likeCard = async (req, res, next) => {
   const { cardId } = req.params;
   try {
     const card = await Card.findByIdAndUpdate(
@@ -49,31 +48,27 @@ module.exports.likeCard = async (req, res) => {
       { new: true },
     );
     if (!card) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
+      throw new NotFoundError('Запрашиваемая карточка не найдена');
     }
     return res.send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при лайке карточки: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.dislikeCard = async (req, res) => {
+module.exports.dislikeCard = async (req, res, next) => {
   const { cardId } = req.params;
   try {
     const card = await Card.findByIdAndUpdate(
       cardId,
-      { $pull: { likes: req.user._id } }, // добавить _id в массив, если его там нет
+      { $pull: { likes: req.user._id } },
       { new: true },
     );
     if (!card) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемая карточка не найдена' });
+      throw new NotFoundError('Запрашиваемая карточка не найдена');
     }
     return res.send(card);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при дизлайке карточки: ${err}` });
+    return next(err);
   }
 };

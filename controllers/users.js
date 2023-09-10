@@ -1,46 +1,49 @@
+const bcrypt = require('bcrypt');
+const JWT = require('jsonwebtoken');
 const User = require('../models/user');
-const {
-  BAD_REQUEST_CODE,
-  NOT_FOUND_CODE,
-  SERVER_ERROR_CODE,
-  CREATED_CODE,
-} = require('../utils/constants');
+const { CREATED_CODE } = require('../utils/constants');
+const NotFoundError = require('../errors/not-found-err');
+const EmptyFieldsError = require('../errors/empty-fields-err');
+const AuthentificationError = require('../errors/auth-err');
 
-module.exports.createUser = async (req, res) => {
-  const { name, about, avatar } = req.body;
+module.exports.createUser = async (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
   try {
-    const user = await User.create({ name, about, avatar });
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      name, about, avatar, email, password: hash,
+    });
     return res.status(CREATED_CODE).send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при создании пользователя: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.getUsers = async (req, res) => {
+module.exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.find({});
-    res.send(users);
+    return res.send(users);
   } catch (err) {
-    res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении списка пользователей: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.getUserId = async (req, res) => {
+module.exports.getUserId = async (req, res, next) => {
   const { userId } = req.params;
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый пользователь не найден' });
+      throw new NotFoundError('Запрашиваемый пользователь не найден');
     }
     return res.send(user);
   } catch (err) {
-    if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при получении пользователя: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.updateUserProfile = async (req, res) => {
+module.exports.updateUserProfile = async (req, res, next) => {
   const { name, about } = req.body;
   try {
     const user = await User.findByIdAndUpdate(
@@ -49,16 +52,15 @@ module.exports.updateUserProfile = async (req, res) => {
       { new: true, runValidators: true },
     );
     if (!user) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый пользователь не найден' });
+      throw new NotFoundError('Запрашиваемый пользователь не найден');
     }
     return res.send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при обновлении данных пользователя: ${err}` });
+    return next(err);
   }
 };
 
-module.exports.updateUserAvatar = async (req, res) => {
+module.exports.updateUserAvatar = async (req, res, next) => {
   const { avatar } = req.body;
   try {
     const user = await User.findByIdAndUpdate(
@@ -67,11 +69,44 @@ module.exports.updateUserAvatar = async (req, res) => {
       { new: true, runValidators: true },
     );
     if (!user) {
-      return res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый пользователь не найден' });
+      throw new NotFoundError('Запрашиваемый пользователь не найден');
     }
     return res.send(user);
   } catch (err) {
-    if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-    return res.status(SERVER_ERROR_CODE).send({ message: `Ошибка при обновлении данных пользователя: ${err}` });
+    return next(err);
+  }
+};
+
+module.exports.login = async (req, res, next) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    throw new EmptyFieldsError('Необходимо заполнить поля email и password');
+  }
+  try {
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      throw new AuthentificationError('Неудача аутентификации. Проверьте поля email и password');
+    }
+    const result = await bcrypt.compare(password, user.password);
+    if (!result) {
+      throw new AuthentificationError('Неудача аутентификации. Проверьте поля email и password');
+    }
+    const payload = { _id: user._id };
+    const token = JWT.sign(payload, 'SECRET_KEY', { expiresIn: '7d' });
+    return res.send({ token });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+module.exports.getUserInfo = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ _id: req.user._id });
+    if (!user) {
+      throw new NotFoundError('Пользователь не найден');
+    }
+    return res.send(user);
+  } catch (err) {
+    return next(err);
   }
 };

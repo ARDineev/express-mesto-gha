@@ -4,7 +4,11 @@ const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
-const { NOT_FOUND_CODE } = require('./utils/constants');
+const {
+  NOT_FOUND_CODE, SERVER_ERROR_CODE, BAD_REQUEST_CODE, CONFLICT_CODE, UNAUTHORIZED_CODE,
+} = require('./utils/constants');
+const { login, createUser } = require('./controllers/users');
+const { auth } = require('./middlewares/auth');
 
 const { PORT = 3000, DB_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
 
@@ -19,14 +23,20 @@ const app = express();
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-  req.user = {
-    _id: '64ef7d413dd70b509711ea40',
-  };
-  next();
-});
-app.use('/users', usersRouter);
-app.use('/cards', cardsRouter);
+
+app.post('/signin', login);
+app.post('/signup', createUser);
+
+app.use('/users', auth, usersRouter);
+app.use('/cards', auth, cardsRouter);
 app.use('/', (req, res) => res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый адрес не найден' }));
+app.use((err, req, res, next) => {
+  const { statusCode = SERVER_ERROR_CODE, message } = err;
+  if (err.name === 'JsonWebTokenError') return res.status(UNAUTHORIZED_CODE).send({ message: err.message });
+  if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
+  if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
+  if (err.code === 11000) return res.status(CONFLICT_CODE).send({ message: 'Пользователь с таким email уже существует' });
+  return res.status(statusCode).send({ message: statusCode === SERVER_ERROR_CODE ? 'На сервере произошла ошибка' : message });
+});
 
 app.listen(PORT);
