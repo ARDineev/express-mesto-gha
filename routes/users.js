@@ -11,7 +11,11 @@ const {
 
 router.get('/', getUsers);
 router.get('/me', getUserInfo);
-router.get('/:userId', getUserId);
+router.get('/:userId', celebrate({
+  params: Joi.object().keys({
+    userId: Joi.string().alphanum().length(24),
+  }),
+}), getUserId);
 
 router.patch('/me/avatar', celebrate({
   body: Joi.object().keys({
