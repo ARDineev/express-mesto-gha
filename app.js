@@ -2,16 +2,27 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const { errors, celebrate, Joi } = require('celebrate');
+const { errors } = require('celebrate');
+const { rateLimit } = require('express-rate-limit');
+
 const usersRouter = require('./routes/users');
 const cardsRouter = require('./routes/cards');
-const {
-  NOT_FOUND_CODE, SERVER_ERROR_CODE, BAD_REQUEST_CODE, CONFLICT_CODE, UNAUTHORIZED_CODE,
-} = require('./utils/constants');
+
+const errorHandler = require('./middlewares/error-handler');
 const { login, createUser } = require('./controllers/users');
 const { auth } = require('./middlewares/auth');
+const { userLogInValidator, userCreateValidator } = require('./middlewares/validators');
+const NotFoundError = require('./errors/not-found-err');
 
 const { PORT = 3000, DB_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // в течение 15 минут проверяются/запоминаются запросы
+  max: 100, // Максимальное количество подключений в течение 15 минут до ограничений
+  standardHeaders: 'draft-7', // в response установить комбинированный заголовок RateLimit
+  // с информацией о лимите запросов, сколько осталось подключений и т.д.
+  legacyHeaders: false, // не отправлять устаревшие заголовки с информацией об ограничениях
+});
 
 mongoose.connect(DB_URL, {
   useNewUrlParser: true, // новый MongoDB-парсер
@@ -21,37 +32,20 @@ mongoose.connect(DB_URL, {
 
 const app = express();
 
+app.use(limiter);
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.post('/signin', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    password: Joi.string().required().min(8),
-  }),
-}), login);
-app.post('/signup', celebrate({
-  body: Joi.object().keys({
-    name: Joi.string().min(2).max(30),
-    about: Joi.string().min(2).max(30),
-    avatar: Joi.string().pattern(/https?:\/\/(www\.)?[\w-.]+\.([a-z]{2,6})[/\w\-._~:/?#[\]@!$&'()*+,;=]*#?\/?$/),
-    email: Joi.string().required().email(),
-    password: Joi.string().required().min(8),
-  }),
-}), createUser);
-
-app.use('/users', auth, usersRouter);
-app.use('/cards', auth, cardsRouter);
-app.use('/', (req, res) => res.status(NOT_FOUND_CODE).send({ message: 'Запрашиваемый адрес не найден' }));
-app.use(errors());
-app.use((err, req, res, next) => {
-  const { statusCode = SERVER_ERROR_CODE, message } = err;
-  if (err.name === 'JsonWebTokenError') return res.status(UNAUTHORIZED_CODE).send({ message: err.message });
-  if (err.name === 'ValidationError') return res.status(BAD_REQUEST_CODE).send({ message: err.message });
-  if (err.name === 'CastError') return res.status(BAD_REQUEST_CODE).send({ message: 'Данные переданы не корректно' });
-  if (err.code === 11000) return res.status(CONFLICT_CODE).send({ message: 'Пользователь с таким email уже существует' });
-  return res.status(statusCode).send({ message: statusCode === SERVER_ERROR_CODE ? 'На сервере произошла ошибка' : message });
+app.post('/signin', userLogInValidator, login);
+app.post('/signup', userCreateValidator, createUser);
+app.use(auth);
+app.use('/users', usersRouter);
+app.use('/cards', cardsRouter);
+app.use('/', (req, res, next) => {
+  next(new NotFoundError('Запрашиваемый адрес не найден'));
 });
+app.use(errors());
+app.use(errorHandler);
 
 app.listen(PORT);

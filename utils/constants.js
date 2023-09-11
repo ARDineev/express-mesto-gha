@@ -5,3 +5,5 @@ module.exports.CREATED_CODE = 201;
 module.exports.UNAUTHORIZED_CODE = 401;
 module.exports.FORBIDDEN_CODE = 403;
 module.exports.CONFLICT_CODE = 409;
+
+module.exports.regExpURL = /https?:\/\/(www\.)?[\w-.]+\.([a-z]{2,6})[/\w\-._~:/?#[\]@!$&'()*+,;=]*#?\/?$/;
